@@ -1,12 +1,16 @@
 import { sumStats } from "./stats.js";
+import { hasArithmeticPattern } from "./patterns.js";
 
 export const randUnit = () => {
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    const buf = new Uint32Array(1);
-    crypto.getRandomValues(buf);
-    return buf[0] / 0x100000000;
+  // Spec §5: cryptographically secure randomness only — no Math.random fallback.
+  if (typeof crypto === "undefined" || !crypto.getRandomValues) {
+    throw new Error(
+      "crypto.getRandomValues is unavailable; secure randomness is required."
+    );
   }
-  return Math.random();
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] / 0x100000000;
 };
 
 export const weightedSample = (items, weights, k) => {
@@ -53,7 +57,9 @@ const hasDigitRepeat = (picks, threshold = 4) => {
   return counts.some((c) => c >= threshold);
 };
 
-const FILTER_DROP_ORDER = ["digit", "spread", "consecutive", "sum"];
+// The arithmetic-pattern filter drops last: evenly spaced tickets are the
+// most-shared combinations on record (see patterns.js).
+const FILTER_DROP_ORDER = ["digit", "spread", "consecutive", "sum", "pattern"];
 const ATTEMPT_BUDGET = 1000;
 
 const passesFilters = ({
@@ -88,6 +94,7 @@ const passesFilters = ({
   if (active.consecutive && avoidSequential && hasConsecutiveRun(sorted, 3)) {
     return false;
   }
+  if (active.pattern && hasArithmeticPattern(sorted)) return false;
 
   return true;
 };
@@ -104,7 +111,13 @@ export const generatePick = ({
   const items = Array.from({ length: max }, (_, i) => i + 1);
   const weights = buildWeights(max, avoidBirthdays);
 
-  const active = { sum: true, spread: true, digit: true, consecutive: true };
+  const active = {
+    sum: true,
+    spread: true,
+    digit: true,
+    consecutive: true,
+    pattern: true,
+  };
   const relaxed = [];
 
   for (let stage = 0; stage <= FILTER_DROP_ORDER.length; stage++) {
@@ -146,16 +159,20 @@ export const generateMany = ({
 }) => {
   const results = [];
   const allRelaxed = new Set();
+  // Rows already produced in this batch are excluded from subsequent draws so
+  // a single batch can never contain the same combination twice.
+  const batchExcludedSet = new Set(excludedSet);
   for (let i = 0; i < count; i++) {
     const r = generatePick({
       pick,
       max,
       avoidBirthdays,
       avoidSequential,
-      excludedSet,
+      excludedSet: batchExcludedSet,
     });
     if (r) {
       results.push(r);
+      batchExcludedSet.add(r.picks.join("-"));
       r.relaxed.forEach((x) => allRelaxed.add(x));
     }
   }
