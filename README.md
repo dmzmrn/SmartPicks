@@ -1,300 +1,150 @@
-# 📊 Lotto Number Generator – Analysis & Reports Modules
+# Smart Pick
 
-## Overview
+Lottery numbers the crowd doesn't play.
 
-This project extends an existing lotto number generator app by adding **two key modules**:
+**Live app: [dmzmrn.github.io/SmartPicks](https://dmzmrn.github.io/SmartPicks)**
 
-1. **Analysis Module** – evaluates generated numbers
-2. **Reports Module** – analyzes historical past draws and distributions
+![Smart Pick — Generate tab](docs/screenshot.png)
 
-The goal is to provide **data visualization and statistical insights**, not prediction or guaranteed outcomes.
+Every lottery combination has exactly the same chance of being drawn — no tool can
+change that. What you *can* change is how many people you share the jackpot with.
+Smart Pick generates combinations that avoid the numbers and patterns other players
+favor, so if you win, you are more likely to keep the whole prize.
 
----
+It runs entirely in your browser: no account, no backend, no tracking.
 
-## ⚠️ Disclaimer
+## Features
 
-* This app is **not affiliated with any official lottery organization**
-* It does **not guarantee winnings**
-* Lottery results are inherently random
-* This app is for **analysis and entertainment purposes only**
+- **Generate** — produce 1–20 sets at a time. Each set gets a 0–100 crowd score and
+  can be copied or added to your excluded list.
+- **Dashboard** — every set you generate is saved and analyzed: how far your picks
+  sit from the birthday range, set totals, number frequency, and a check against
+  real past draws.
+- **Excluded** — keep a list of combinations to skip (import, export, or paste).
+  Use all of it, only the most recent entries, or none.
+- **Reports** — upload past draw results for charts: sums over time, number
+  frequency, odd/even and low/high splits, a frequency heatmap, and a sortable table.
+- **How it works** — every rule explained in plain language, with sources.
+- Presets for PCSO **6/58, 6/55, 6/49, 6/45 and 6/42**, plus a custom game
+  (pick 1–20 numbers from up to 99).
+- Light, dark or system theme, with Slate, Blue or Teal accents.
 
----
+## How the crowd score works
 
-# 🧩 Architecture Overview
+The score is the share of all possible combinations that other players choose more
+often than yours. A score of 90 means 90% of combinations are more crowded; a random
+combination averages exactly 50.
 
-```
-Generator Module → Generates numbers
+The model was fitted to **3,086 real PCSO draws** (6/55 and 6/58) and their jackpot
+winner counts, using Poisson regression. Two effects stood out:
 
-Analysis Module → Evaluates generated numbers
+| Effect | Multiplies expected co-winners by |
+|---|---|
+| Each number from 1–31 (birthday range) | ≈ 1.6× |
+| Every number from 1–31 | a further ≈ 4× |
 
-Reports Module → Analyzes historical draw data
-```
+Evenly spaced tickets are the extreme case: on 1 October 2022, 433 people shared the
+Grand Lotto 6/55 jackpot because the winning numbers were 9 · 18 · 27 · 36 · 45 · 54.
+Such sets score 0 and the generator never produces them.
 
-Each module is **independent and modular**.
+Full method, results and tests: [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md).
 
----
+## Generator rules
 
-# 📦 Modules
+Numbers are drawn with cryptographically secure randomness
+(`crypto.getRandomValues`) and Efraimidis–Spirakis weighted sampling, then every set
+must pass these rules:
 
-## 1. Analysis Module (Generated Numbers)
+| Rule | Effect |
+|---|---|
+| Avoid birthday range (toggle) | Weights 1–12 at 0.18, 13–31 at 0.40, 32+ at 1.00 |
+| Avoid 3+ in a row (toggle) | Rejects runs like 12 · 13 · 14 |
+| Evenly spaced pattern | Rejects sets where all numbers, or all but one, are equally spaced |
+| Sum window | Rejects totals outside μ − 1.5σ to μ + 2.75σ |
+| Parity and range | Rejects all-even, all-odd and all-low sets (and all-high when birthday weighting is off) |
+| Spread | Rejects sets whose lowest-to-highest gap is under 40% of the range |
+| Ending digits | Rejects four or more numbers sharing a last digit |
+| Excluded list | Rejects any combination on your active excluded list |
 
-### Purpose
+For the standard games every rule always holds. If a small custom game can't satisfy
+them all, the app loosens the minor rules one at a time and tells you which.
 
-Analyzes a generated number set using statistical indicators.
+## Loading past draws
 
-### Input Props
+The Reports tab accepts `.txt` or `.csv` files with one draw per line. Dashes,
+spaces, commas and extra columns (game name, date, jackpot amount) are all handled.
+Add the jackpot winner count as the **last** field to unlock the winner analysis on
+the Dashboard:
 
-```js
-generatedNumbers: number[]
-pastDraws: number[][]
-excludedNumbers: number[]
-zScore: number
-```
-
-### Features
-
-* Z-score classification (anti-public vs common)
-* Odd vs Even ratio
-* High vs Low split
-* Gap analysis
-* Exclusion conflict detection
-* Frequency comparison vs past draws
-
----
-
-### Structure
-
-```
-/analysis-module
-  /components
-    ZScoreBadge.jsx
-    FrequencyMiniChart.jsx
-    StatsBreakdown.jsx
-    ExclusionCheck.jsx
-
-  /utils
-    calculations.js
-
-  AnalysisModule.jsx
-```
-
----
-
-### Usage
-
-```jsx
-import AnalysisModule from "./analysis-module/AnalysisModule";
-
-<AnalysisModule
-  generatedNumbers={numbers}
-  pastDraws={history}
-  excludedNumbers={excluded}
-  zScore={z}
-/>
+```text
+01-42-23-26-46-32 0
+6/58 05-11-22-33-44-55 09/17/2024 51,120,000.00 2
+03 08 19 27 38 49
 ```
 
----
+Files are read in your browser and never uploaded anywhere.
 
----
+## Getting started
 
-## 2. Reports Module (Past Draw Analysis)
+Requires **Node.js 20.19+ or 22.12+**.
 
-### Purpose
-
-Provides **historical insights and distribution analysis** across all past draws.
-
-### Input Props
-
-```js
-pastDraws: number[][]
+```bash
+npm install
+npm run dev       # http://localhost:5173/SmartPicks/
+npm test          # statistical test suite (Vitest)
+npm run build     # production build in dist/
 ```
 
----
+## Deployment
 
-### Features
+Every push or merge to `master` runs the tests, builds the app and publishes
+`dist/` to the `gh-pages` branch
+([.github/workflows/deploy.yml](.github/workflows/deploy.yml)). A failing test stops
+the deploy.
 
-### A. Per-Draw Analysis
+To publish by hand instead: `npm run build && npm run deploy`.
 
-* Sum of each draw
-* Odd/Even ratio
-* High/Low split
+## Recalibrating the crowd score
 
-### B. Cross-Draw Analysis
+With your own draw files (winner count as the last field):
 
-* Frequency distribution of numbers
-* Trend analysis over time
-* Pattern visualization
-
----
-
-### Components
-
-#### 1. DrawDistributionList
-
-* Displays each draw
-* Shows:
-
-  * numbers
-  * sum
-  * ratios
-* Supports sorting
-
----
-
-#### 2. SumDistributionChart
-
-* Visualizes sum trends per draw
-
----
-
-#### 3. FrequencyDistributionChart
-
-* Shows most/least frequent numbers
-
----
-
-#### 4. PatternAnalysisChart
-
-* Tracks:
-
-  * odd/even trends
-  * high/low trends
-
----
-
-#### 5. ClusterHeatmap
-
-* Grid-based number frequency visualization
-
----
-
-### Structure
-
-```
-/reports-module
-  /components
-    DrawDistributionList.jsx
-    SumDistributionChart.jsx
-    FrequencyDistributionChart.jsx
-    PatternAnalysisChart.jsx
-    ClusterHeatmap.jsx
-
-  /utils
-    reportCalculations.js
-
-  ReportsModule.jsx
+```bash
+node scripts/calibrate-crowd-model.mjs 6/55=6-55.txt 6/58=6-58.txt
 ```
 
----
+It prints the fitted coefficients, their standard errors and permutation-test
+p-values. Update the constants in `src/lib/scoring.js` if they change.
 
-### Usage
+## Project structure
 
-```jsx
-import ReportsModule from "./reports-module/ReportsModule";
-
-<ReportsModule pastDraws={history} />
+```text
+src/
+  App.jsx                 app shell, tabs, shared state
+  components/             Generate / Excluded / How it works tabs, shared UI
+    ui/                   shadcn/ui primitives
+  lib/
+    generator.js          secure RNG, weighted sampling, filter cascade
+    patterns.js           evenly spaced pattern detection
+    scoring.js            calibrated crowd score
+    stats.js              sum statistics, odds
+    parsing.js            draw and combination file parsing
+    storage.js            per-game localStorage
+    __tests__/            statistical test harness
+  modules/
+    dashboard/            Dashboard tab (lazy-loaded)
+    reports/              Reports tab (lazy-loaded)
+scripts/
+  calibrate-crowd-model.mjs
+docs/
+  RESEARCH_LOG.md         every engine change, why, and how it was verified
 ```
 
----
+Built with React 18, Vite, Tailwind CSS, shadcn/ui and Recharts.
+The full product spec is in [BRIEF.md](BRIEF.md).
 
-# 🧠 Core Concepts
+## Disclaimer
 
-## Z-Score Classification
-
-Used to measure how “unusual” a number set is:
-
-| Range       | Meaning                   |
-| ----------- | ------------------------- |
-| ≥ +0.5      | Less common (anti-public) |
-| -0.5 to 0.5 | Typical                   |
-| ≤ -0.5      | More common               |
-
----
-
-## Analysis Philosophy
-
-* Focus on **distribution and patterns**
-* Avoid claims of prediction
-* Provide **visual insights for users**
-
----
-
-# ⚙️ Utilities
-
-## analysis-module/utils/calculations.js
-
-* getFrequencyMap()
-* getOddEven()
-* getHighLow()
-* getGaps()
-* checkExclusions()
-
----
-
-## reports-module/utils/reportCalculations.js
-
-* getDrawSum()
-* getOddEvenRatio()
-* getHighLowSplit()
-* getFrequencyMap()
-* getDrawStats()
-* normalizeFrequency()
-
----
-
-# 🎨 UI Guidelines
-
-* Modular, plug-and-play components
-* No full-page layout assumptions
-* Tailwind-based styling
-* Responsive and lightweight
-
----
-
-# 💰 Monetization Strategy
-
-Recommended options:
-
-* One-time purchase (low price)
-* Freemium (basic vs advanced analytics)
-* Ads with optional removal
-
----
-
-# ⚠️ Important Constraints
-
-* Do NOT present as a “winning system”
-* Do NOT imply increased odds
-* Keep positioning as:
-
-  * analysis tool
-  * number generator
-  * statistical viewer
-
----
-
-# 🚀 Future Enhancements
-
-* Time filters (last N draws)
-* Per-draw detail modal
-* Saved user number tracking
-* Custom pattern filters
-* Advanced statistical scoring
-
----
-
-# 🧠 Summary
-
-This project is structured to:
-
-* Generate numbers
-* Analyze outputs
-* Provide historical insights
-
-The **Reports Module** is the key value driver, offering users:
-
-* visibility into patterns
-* understanding of distributions
-* confidence in number selection (without prediction claims)
-
----
+Smart Pick is not affiliated with PCSO or any lottery operator. It cannot predict
+draws or improve your odds of winning — every combination is equally likely. It only
+lowers the chance of sharing a prize. Play for entertainment, and never spend money
+you can't afford to lose.
