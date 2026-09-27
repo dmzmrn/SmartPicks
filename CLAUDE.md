@@ -65,3 +65,24 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## 5. Project Specification: Anti-Jackpot-Splitting Lottery Engine
+
+### Core Philosophy
+This tool does NOT predict future lottery numbers. It uses game-theory optimization to generate picks that systematically avoid common human biases (birthdays, visual patterns, narrow clusters), maximizing Expected Value (EV) by minimizing the probability of splitting a prize if a win occurs.
+
+### Technical & Mathematical Constraints
+- **Sampling & Randomness:** Cryptographically secure randomness only (`crypto.getRandomValues`) paired with the **Efraimidis–Spirakis weighted reservoir sampling algorithm** for provably correct sampling without replacement.
+- **Tiered Weights (Anti-Birthday Filter):** Numbers 1–12 (Weight = `0.18`), Numbers 13–31 (Weight = `0.40`), Numbers 32+ (Weight = `1.00`).
+- **Combination Filters (Strict Rejection Criteria):**
+  - **Consecutive Runs:** Reject any sorted run of 3+ consecutive integers (e.g., `[11, 12, 13]`).
+  - **Statistical Balance:** Reject if the sum falls outside the asymmetric window of $\mu - 1.5\sigma \le \text{Sum} \le \mu + 2.75\sigma$.
+  - **Parity/Range Rows:** Reject all-even, all-odd, and all-low rows. *(All-high rows allowed only when birthday weights are active).*
+  - **Number Spread:** Combined picks must span $\ge 40\%$ of the game's maximum number matrix (e.g., span $\ge 23$ for a 6/58 game).
+  - **Ending-Digit Diversity:** No single trailing digit (`0–9`) can appear in 4 or more picks within a single combination.
+
+### Instructions for Fable 5 Execution
+1. **Maintain Rule Integrity:** Never optimize or refactor code in a way that relaxes or bypasses any of the constraints listed above (aligns with *Section 3: Surgical Changes*).
+2. **Verification Loop:** When writing or editing functions, always provide or update a corresponding statistical test harness to prove the output distributions perfectly match these algorithmic rules over 10,000 simulated iterations (aligns with *Section 4: Goal-Driven Execution*).

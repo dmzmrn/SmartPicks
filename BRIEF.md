@@ -20,10 +20,10 @@ Both modules respect a shared **game preset** (6/58, 6/55, 6/49, 6/45, 6/42, or 
 | Layer | Choice |
 |---|---|
 | Framework | React 18 + Vite (JavaScript, no TS unless preferred) |
-| Styling | Tailwind CSS, dark mode default |
+| Styling | Tailwind CSS, dark mode default (Light / Dark / System available) |
 | Components | **shadcn/ui** — initialize via `npx shadcn-ui@latest init` |
 | Charts | `recharts` (lazy-loaded only when Reports tab is opened) |
-| RNG | `crypto.getRandomValues()` with `Math.random` fallback |
+| RNG | `crypto.getRandomValues()` only — throws if unavailable (CLAUDE.md §5) |
 | State | `useState` / `useEffect` / `useCallback` only — no Redux/Zustand |
 | Persistence | `localStorage` (per-game keys) |
 | Toasts | `sonner` (shipped with shadcn) |
@@ -44,34 +44,25 @@ recharts
 
 ## 3. Theme & design system
 
-### Colors (configure in `tailwind.config.js` + `globals.css` shadcn vars)
-- Base palette: **slate** (zinc-like), dark mode default
-- Primary accent: **indigo** (`#6366f1` family — `indigo-500` for actions, `indigo-300` for text accents, `indigo-400` for highlights)
-- Status colors: `green-400` (positive / hot), `red-400` (negative / cold), `amber-400` (warning), `yellow-400` (caution)
+Clean, professional, restrained: neutral surfaces, **one** accent, no gradients or glows.
+Every color is a CSS token in `src/index.css`; components never hardcode colors.
 
-### Fonts (load from Google Fonts in `index.html` or via `<link>` in `App.jsx`)
-- **Body:** `JetBrains Mono`, `Fira Code`, monospace fallback
-- **Display (h1):** `Space Grotesk` with `bg-clip-text` gradient
+### Tokens & presets
+- shadcn HSL tokens (`--background`, `--card`, `--primary`, `--muted-foreground`, `--border`, …) plus `--warning` and chart tokens.
+- **Mode:** `.dark` on `<html>` — Light / Dark / System (System follows `prefers-color-scheme`). Default **Dark**.
+- **Accent preset:** `data-theme` on `<html>` — **Slate** (default), Blue, Teal. Only `--primary` / `--ring` change.
+- Persisted in `localStorage["lotto-theme"]` as `{ mode, preset }`; an inline script in `index.html` applies it before first paint.
 
-### Background
-Body: `linear-gradient(160deg, #0a0e1a 0%, #111827 40%, #0f1629 100%)` applied in `index.css`.
+### Typography
+- **Inter** (Google Fonts) for all UI text, `tabular-nums` for figures; system monospace only for paste/separator inputs.
 
-### Card aesthetic (matches shadcn idiom)
-```
-border border-white/[0.08]
-bg-white/[0.02]
-rounded-lg
-shadow-sm
-backdrop-blur-sm
-```
-Cards use `Card` / `CardHeader` / `CardTitle` / `CardDescription` / `CardContent` / `CardFooter` from shadcn.
+### Surfaces
+- Page `bg-background`; cards `bg-card` + 1px `border` + `shadow-sm`, radius `0.5rem`.
+- Stat strips are one bordered card split by 1px gaps (`gap-px bg-border`), not separate cards.
 
-### Container width
-- Default: `max-w-2xl` (640px) — keeps the generator UI focused
-- When `activeTab === "reports"`: `max-w-7xl` (1280px) — landscape charts
-- Use a 0.3s transition on `max-width`
-
----
+### Layout
+- Sticky top bar (logo, name, settings) · game title + game `Select` · stats strip · tabs.
+- Container `max-w-6xl` for every tab. Generate is two columns on `lg` (settings 320px | results).
 
 ## 4. Game presets
 
@@ -95,12 +86,12 @@ export const PRESETS = {
 ### Crypto-backed RNG
 ```js
 const randUnit = () => {
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    const buf = new Uint32Array(1);
-    crypto.getRandomValues(buf);
-    return buf[0] / 0x100000000;
+  if (typeof crypto === "undefined" || !crypto.getRandomValues) {
+    throw new Error("crypto.getRandomValues is unavailable; secure randomness is required.");
   }
-  return Math.random();
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] / 0x100000000;
 };
 ```
 
@@ -132,7 +123,7 @@ const sumStats = (pick, max) => {
 ```
 
 ### Filter cascade
-Per attempt budget = **1000** attempts per stage. If a stage exhausts, drop filters in this order and retry: **digit → spread → consecutive → sum**. Hard filters (parity, all-low, excluded set) never drop.
+Per attempt budget = **1000** attempts per stage. If a stage exhausts, drop filters in this order and retry: **digit → spread → consecutive → sum → pattern**. Hard filters (parity, all-low, excluded set) never drop.
 
 Return `{ picks: number[], relaxed: string[] } | null`.
 
@@ -148,6 +139,7 @@ Return `{ picks: number[], relaxed: string[] } | null`.
 | 6 | **Last-digit diversity** | always on, droppable | No last digit (`n % 10`) appears in ≥ 4 picks |
 | 7 | **3+ consecutive run** | toggle ON, droppable | No run of 3 consecutive integers in sorted picks |
 | 8 | **Excluded set** | always on, hard | Reject if `picks.join("-")` is in active excluded Set |
+| 9 | **Arithmetic pattern** | always on, droppable (last) | Reject if ≥ `max(4, pick − 1)` numbers are evenly spaced (e.g. 09·18·27·36·45·54 — 433 PCSO jackpot winners, 1 Oct 2022). `src/lib/patterns.js` |
 
 **Reporting `relaxed[]`:** filter out `"consecutive"` if `avoidSequential` was OFF (not a real relaxation).
 
@@ -178,14 +170,12 @@ const computeStats = (picks, max) => {
 shadcn `Tabs`: `generate` | `excluded` | `reports` | `info`.
 
 ### 6.1 Header
-- shadcn `Badge` pill: `◆ SCIENCE-BASED APPROACH`
-- `<h1>` "Lotto Smart Pick" — Space Grotesk, `bg-clip-text` indigo gradient
-- Subtitle: "Avoid common picks. Minimize jackpot splitting. No magic — just math."
+- Sticky top bar: accent logo tile + "Smart Pick" + tagline "Lottery numbers the crowd doesn't play" + settings (Appearance dialog: Mode, Accent, Reset)
+- Page heading: game label as `<h1>`, subline "Pick {pick} from 1–{max} · Draws {schedule} at 9:00 PM"
 
-### 6.2 Game preset selector (Card, above tabs)
-- Pill `Button` group (one per preset key) using `variant="secondary"` for inactive, custom indigo bg for active
-- When `custom` selected: two `Input type="number"` for pick and max
-- Schedule line: `{label} — Draw schedule: {schedule} at 9PM`
+### 6.2 Game preset selector (right of the page heading)
+- shadcn `Select` listing every preset label
+- When `custom` selected: two `Input type="number"` for pick and max beside it
 
 ### 6.3 Stats bar (3 small Cards)
 - **Jackpot Odds:** `1 in C(max, pick)` — use `BigInt` for factorials
@@ -199,7 +189,7 @@ shadcn `Tabs`: `generate` | `excluded` | `reports` | `info`.
 - shadcn `Switch` "Avoid 3+ consecutive" — defaults ON
 - shadcn `Slider` "Sets" range `[1, 20]`, default `5`, with right-aligned numeric label
 
-**Generate Button:** full-width, `bg-gradient-to-br from-indigo-500 to-indigo-600`, label `Generate {n} Smart Pick{s}`. Disabled while loading. Loading state label: "Generating…".
+**Generate Button:** full-width primary `Button` inside the settings card, label `Generate {n} pick{s}`. Disabled while loading. Loading state label: "Generating…".
 
 **Warning banner** (`Alert variant="warning"`, conditional): "Filters relaxed: <list>. The generator couldn't satisfy every constraint within its attempt budget — try reducing your exclusion list or loosening the toggles for stricter output."
 
@@ -211,11 +201,11 @@ shadcn `Tabs`: `generate` | `excluded` | `reports` | `info`.
 **Result row** (per generated set):
 - Monospace index `#01`
 - Column container holding:
-  - **Ball row:** each ball is a 48px circle with HSL gradient `linear-gradient(135deg, hsl((n/max)*280, 70%, 55%), hsl((n/max)*280, 80%, 40%))`, white text, drop shadow + inset highlight
-  - **Stats badge** (10px monospace, `text-slate-500`): `Σ {sum}` `z{±x.xx}` `L{low}·H{high}` `E{even}·O{odd}` `span {spread}`
-    - z-score colored: `text-green-400` if `z ≥ +0.5`, `text-amber-400` if `z ≤ −0.5`, `text-slate-400` otherwise
-- Per-row Copy button → "✓ Copied" 1.5s state
-- Per-row Exclude button → "✓ Saved" when in excluded set (disabled in saved state)
+  - **Ball row:** 40px circles; numbers 32+ use the accent fill (`bg-primary`), 1–31 stay neutral (`bg-secondary` + border). A legend under the list explains it.
+  - **Stats line** (12px, muted labels, foreground values): `Sum` `z` `Low/High` `Even/Odd` `Span`
+- **Crowd score** (`src/lib/scoring.js`): 0–100 number + label + thin accent meter. Score = share of all combinations more crowded than this one (calibrated model — see `docs/RESEARCH_LOG.md`, 2026-09-27)
+- Per-row Copy icon button (tooltip) → check icon for 1.5s
+- Per-row Exclude icon button (tooltip) → check icon + disabled when in excluded set
 
 ### 6.5 Excluded tab — three Cards
 
@@ -274,14 +264,17 @@ Lazy-load: `const ReportsModule = lazy(() => import("./modules/reports/ReportsMo
 Vertical Cards. Required sections (in order):
 
 1. **What this tool does** — Anti-jackpot-splitting framing
-2. **Avoid birthday range (tiered weights)** — Explain the 0.18/0.40/1.0 scheme with marginal probabilities
-3. **Avoid 3+ consecutive** — Visual pattern avoidance
-4. **Statistical balance (always on)** — Asymmetric sum window, parity, low/high
-5. **Number spread (always on)** — 40% of max threshold
-6. **Ending-digit diversity (always on)** — ≥4 share rejection
-7. **Sampling method** — Crypto RNG + Efraimidis–Spirakis explanation
-8. **Excluding past winners** — Honest framing: independent draws, recent mode is preference not edge
-9. **Honest disclaimer** — Red accent (`text-red-400`): "No tool can predict lotto numbers. Every combo has the same odds. Treat lotto as entertainment."
+2. **The crowd score** — calibrated model, what the number means
+3. **Avoid birthday range (tiered weights)** — Explain the 0.18/0.40/1.0 scheme with marginal probabilities
+4. **Avoid 3+ consecutive** — Visual pattern avoidance
+5. **Evenly spaced patterns (always on)** — the 433-winner draw
+6. **Statistical balance (always on)** — Asymmetric sum window, parity, low/high
+7. **Number spread (always on)** — 40% of max threshold
+8. **Ending-digit diversity (always on)** — ≥4 share rejection
+9. **Sampling method** — Crypto-only RNG + Efraimidis–Spirakis explanation
+10. **Excluding past winners** — Honest framing: independent draws, recent mode is preference not edge
+11. **Sources** — linked references
+12. **Honest disclaimer** — destructive `Alert`: "No tool can predict lotto numbers. Every combo has the same odds. Treat lotto as entertainment."
 
 ---
 
@@ -360,7 +353,7 @@ const parseDrawsFromText = (text, pick, max) => {
 | `FileUploadCard.jsx` | Upload UI + Generate Report button |
 | `SummaryStats.jsx` | 6-card stat strip (total, mean ± σ, range, hottest, coldest, mode O/E) |
 | `SumDistributionChart.jsx` | Recharts `AreaChart` with gradient fill + reference line at mean |
-| `FrequencyDistributionChart.jsx` | Recharts `BarChart`; hottest cell green, coldest red, others indigo |
+| `FrequencyDistributionChart.jsx` | Recharts `BarChart`; hottest and coldest bars highlighted (full opacity), others muted |
 | `PatternAnalysisChart.jsx` | Stacked `BarChart` with `ToggleGroup` to switch Odd/Even ↔ Low/High |
 | `ClusterHeatmap.jsx` | CSS grid (14 cols), each cell = number, opacity intensity by frequency |
 | `DrawDistributionList.jsx` | Sortable `<table>` with sticky header inside `ScrollArea`. Columns: # / Numbers / Sum / O/E / L/H |
@@ -389,12 +382,13 @@ export const generateMockDraws = (pick, max, count) => Array<number[]>
 
 ### 7.8 Chart styling conventions
 - All charts wrapped in `<Card>` with `<CardHeader>` (title + description) and `<CardContent>`
-- Tooltip: `background: "#020617"`, `border: "1px solid rgba(255,255,255,0.1)"`, `borderRadius: 6`, fontSize 12
-- Axis: `fill: "#64748b"`, `fontSize: 10–11`, `fontFamily: "monospace"`
-- Grid: `stroke="rgba(255,255,255,0.05)"`, `strokeDasharray="3 3"`
-- Chart height: `h-72` (288px)
-- Bars: `radius={[3, 3, 0, 0]}` for rounded tops
-- Color palette: indigo (#6366f1, #818cf8), green (#4ade80), red (#f87171), amber (#facc15), violet (#a78bfa), blue (#60a5fa), emerald (#34d399)
+- Shared theme: `src/lib/chartTheme.jsx` — colors are CSS variables, so charts follow light/dark automatically
+- Palette (dataviz reference, validated for CVD + ≥ 3:1 contrast on the card surface in both modes): slot 1 blue `--chart-1`, slot 2 orange `--chart-2`, gray reference `--chart-reference`
+- Dashboard entity colors: your picks = blue, real draws = orange, uniform baseline = gray
+- Tooltip and legend text use text tokens, never the series color
+- Solid horizontal gridlines (`--chart-grid`); dashed lines only for thresholds
+- Chart height `h-64`–`h-72`; bars `radius={[4, 4, 0, 0]}`
+- Frequency chart: one hue, most/least-drawn bars at full opacity, others 35%. Heatmap: one-hue sequential ramp
 
 ### 7.9 Component constraints
 - Each component file < 120 lines
@@ -424,7 +418,7 @@ lotto-exclusion-settings:{key}   → JSON { mode: "off"|"all-time"|"recent", rec
 - **Recent N input:** clamp `[10, 500]` on every change
 - **localStorage failures:** silent fallback with `console.error`, never crash
 - **Clipboard API:** if `navigator.clipboard` unavailable, fall back to hidden-textarea + `document.execCommand("copy")`
-- **Crypto API:** if `crypto.getRandomValues` unavailable, fall back to `Math.random()` (still functional)
+- **Crypto API:** if `crypto.getRandomValues` is unavailable, generation throws — no `Math.random()` fallback (CLAUDE.md §5)
 - **Game switch in Reports:** auto-reset uploaded draws (a 6/58 file isn't valid for 6/42)
 - **BigInt formatting:** for jackpot odds `C(58, 6)`, use BigInt factorials and `Number()` only at format time
 
@@ -484,7 +478,7 @@ project-root/
 - [ ] Custom game accepts pick `[1, 20]`, max `[2, 99]`, with `pick ≤ max`
 - [ ] Generate produces N sets respecting both toggles
 - [ ] Warning banner appears when any filter was relaxed (and only mentions filters that were actually on)
-- [ ] Per-row stats badge shows correct z-score with proper color tint (green/amber/slate)
+- [ ] Per-row stats line shows correct z-score; crowd score matches `scoreRow`
 - [ ] Copy works in both orientations with custom separator; separator field disabled in vertical mode
 - [ ] Per-row Exclude button toggles to "✓ Saved"; Excluded tab badge count updates immediately
 - [ ] Recent-only mode honors N; switching modes is instant; status line updates correctly
@@ -499,7 +493,7 @@ project-root/
 - [ ] Generate Report button is `disabled` until a file is loaded OR demo data is loaded
 - [ ] All 5 charts render correctly with sample data
 - [ ] Switching the parent's preset resets the Reports state
-- [ ] Frequency chart highlights hottest (green) and coldest (red) numbers
+- [ ] Frequency chart highlights hottest and coldest numbers
 - [ ] Heatmap intensity scales with frequency; cells have hover effect
 - [ ] Sort pills in Past Draws table cycle asc/desc on second click
 
