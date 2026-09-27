@@ -7,125 +7,93 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Settings, Sun, Moon, Check, RotateCcw } from "lucide-react";
-import { ACCENTS, MODES, SURFACES } from "@/lib/theme";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Settings, Sun, Moon, Monitor, Check, RotateCcw } from "lucide-react";
+import { MODES, PRESETS } from "@/lib/theme";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
-const ModeIcon = ({ mode }) =>
-  mode === "dark" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />;
+const MODE_ICONS = { light: Sun, dark: Moon, system: Monitor };
+
+function SettingSection({ title, description, children }) {
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="text-sm font-medium">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function SettingsDialog() {
-  const { mode, accent, surface, setMode, setAccent, setSurface, reset } = useTheme();
+  const { mode, preset, setMode, setPreset, reset } = useTheme();
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-9 w-9 rounded-full border border-white/[0.08] bg-white/[0.02] text-muted-foreground hover:text-foreground"
-          aria-label="Open settings"
-        >
+        <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Open appearance settings">
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="surface-card">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Appearance</DialogTitle>
-          <DialogDescription>
-            Customize the theme. Choices persist locally.
-          </DialogDescription>
+          <DialogDescription>Saved on this device and applied instantly.</DialogDescription>
         </DialogHeader>
 
-        <section className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Mode
-          </Label>
-          <div className="flex flex-wrap gap-2">
+        <SettingSection title="Mode" description="System follows your device setting.">
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            value={mode}
+            onValueChange={(v) => v && setMode(v)}
+            className="grid grid-cols-3"
+          >
             {MODES.map((m) => {
-              const active = m.key === mode;
+              const Icon = MODE_ICONS[m.key];
               return (
-                <Button
-                  key={m.key}
-                  size="sm"
-                  variant={active ? "default" : "secondary"}
-                  className={cn("gap-2", active && "accent-grad text-white")}
-                  onClick={() => setMode(m.key)}
-                >
-                  <ModeIcon mode={m.key} />
+                <ToggleGroupItem key={m.key} value={m.key} className="gap-2">
+                  <Icon className="h-4 w-4" />
                   {m.label}
-                </Button>
+                </ToggleGroupItem>
               );
             })}
-          </div>
-        </section>
+          </ToggleGroup>
+        </SettingSection>
 
-        <section className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Accent color
-          </Label>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {ACCENTS.map((a) => {
-              const active = a.key === accent;
+        <SettingSection title="Accent" description="Colors buttons, focus rings and highlights.">
+          <div className="grid grid-cols-3 gap-2">
+            {PRESETS.map((p) => {
+              const active = p.key === preset;
               return (
                 <button
-                  key={a.key}
+                  key={p.key}
                   type="button"
-                  onClick={() => setAccent(a.key)}
+                  onClick={() => setPreset(p.key)}
+                  aria-pressed={active}
                   className={cn(
-                    "group relative flex h-12 items-center justify-center rounded-md border transition",
-                    active
-                      ? "border-white/30 ring-2 ring-offset-2 ring-offset-background"
-                      : "border-white/[0.08] hover:border-white/20"
+                    "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    active && "border-primary"
                   )}
-                  style={{
-                    backgroundColor: a.swatch,
-                    boxShadow: `0 6px 20px -10px ${a.swatch}`,
-                  }}
-                  aria-label={`Set accent to ${a.label}`}
-                  title={a.label}
                 >
-                  {active && <Check className="h-4 w-4 text-white drop-shadow" />}
+                  <span
+                    className="h-4 w-4 shrink-0 rounded-full border border-border"
+                    style={{ backgroundColor: p.swatch }}
+                  />
+                  {p.label}
+                  {active && <Check className="ml-auto h-4 w-4" />}
                 </button>
               );
             })}
           </div>
-        </section>
+        </SettingSection>
 
-        <section className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Dashboard surface
-          </Label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {SURFACES.map((s) => {
-              const active = s.key === surface;
-              return (
-                <Button
-                  key={s.key}
-                  size="sm"
-                  variant={active ? "default" : "secondary"}
-                  className={cn(active && "accent-grad text-white")}
-                  onClick={() => setSurface(s.key)}
-                >
-                  {s.label}
-                </Button>
-              );
-            })}
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            Changes the body gradient palette behind cards.
-          </p>
-        </section>
-
-        <div className="flex items-center justify-between pt-2">
-          <Button variant="ghost" size="sm" onClick={reset} className="gap-1.5 text-xs">
-            <RotateCcw className="h-3 w-3" /> Reset to defaults
+        <div className="flex justify-end border-t pt-4">
+          <Button variant="ghost" size="sm" onClick={reset} className="gap-1.5">
+            <RotateCcw className="h-3.5 w-3.5" /> Reset to defaults
           </Button>
-          <span className="text-[11px] text-muted-foreground">
-            {mode} · {accent} · {surface}
-          </span>
         </div>
       </DialogContent>
     </Dialog>

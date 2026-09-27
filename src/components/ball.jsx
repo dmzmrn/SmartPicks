@@ -1,28 +1,40 @@
 import { cn } from "@/lib/utils";
+import { BIRTHDAY_RANGE_MAX } from "@/lib/scoring";
 
 const SIZES = {
-  lg: { box: "h-12 w-12", text: "text-base" },
-  md: { box: "h-10 w-10", text: "text-sm" },
-  sm: { box: "h-8 w-8", text: "text-xs" },
+  lg: "h-10 w-10 text-sm",
+  sm: "h-7 w-7 text-xs",
 };
 
-export default function Ball({ n, max, size = "lg", className }) {
-  const hue = (n / Math.max(max, 1)) * 280;
-  const style = {
-    background: `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${hue}, 80%, 40%))`,
-  };
-  const s = SIZES[size] || SIZES.lg;
+// Numbers past the birthday range are the ones other players choose least,
+// so they carry the accent fill; birthday-range numbers stay neutral.
+export default function Ball({ n, size = "lg", className }) {
+  const pastBirthdayRange = n > BIRTHDAY_RANGE_MAX;
   return (
     <div
       className={cn(
-        "ball-glow inline-flex shrink-0 items-center justify-center rounded-full font-mono font-semibold text-white",
-        s.box,
-        s.text,
+        "inline-flex shrink-0 items-center justify-center rounded-full font-semibold tabular-nums",
+        pastBirthdayRange
+          ? "bg-primary text-primary-foreground"
+          : "border bg-secondary text-secondary-foreground",
+        SIZES[size] || SIZES.lg,
         className
       )}
-      style={style}
     >
       {String(n).padStart(2, "0")}
+    </div>
+  );
+}
+
+export function BallLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-3 w-3 rounded-full bg-primary" /> 32+ · rarely played
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-3 w-3 rounded-full border bg-secondary" /> 1–31 · birthday range
+      </span>
     </div>
   );
 }

@@ -1,15 +1,9 @@
-import { Card, CardContent } from "@/components/ui/card";
-
 const Stat = ({ label, value, hint }) => (
-  <Card>
-    <CardContent className="space-y-1 p-4">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-      <div className="font-display text-xl accent-text-soft">{value}</div>
-      {hint && <div className="text-[11px] text-slate-500">{hint}</div>}
-    </CardContent>
-  </Card>
+  <div className="space-y-1 bg-card px-5 py-4">
+    <div className="text-xs font-medium text-muted-foreground">{label}</div>
+    <div className="text-xl font-semibold tabular-nums tracking-tight">{value}</div>
+    {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+  </div>
 );
 
 export default function SummaryStats({ aggregate }) {
@@ -31,7 +25,7 @@ export default function SummaryStats({ aggregate }) {
     arr.length === 0 ? "—" : arr.slice(0, 4).map((n) => String(n).padStart(2, "0")).join(", ") + (arr.length > 4 ? "…" : "");
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border shadow-sm md:grid-cols-3 xl:grid-cols-6">
       <Stat label="Total draws" value={totalDraws} />
       <Stat label="Mean sum" value={fmt(meanSum)} hint={`σ ${stddevSum.toFixed(1)}`} />
       <Stat label="Sum range" value={`${minSum}–${maxSum}`} />
@@ -45,7 +39,7 @@ export default function SummaryStats({ aggregate }) {
         value={fmtList(coldest)}
         hint={`${coldestCount}× drawn`}
       />
-      <Stat label="Mode O/E" value={modeOddEven} />
+      <Stat label="Most common odd/even" value={modeOddEven} />
     </div>
   );
 }

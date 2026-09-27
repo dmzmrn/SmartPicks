@@ -1,15 +1,32 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" data-theme="slate">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Lottery picks that avoid the numbers other players choose, so a win is less likely to be shared." />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f172a'/%3E%3Ccircle cx='11' cy='11' r='3' fill='white'/%3E%3Ccircle cx='21' cy='21' r='3' fill='white'/%3E%3Ccircle cx='21' cy='11' r='3' fill='white'/%3E%3C/svg%3E"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>Lotto Smart Pick</title>
+    <script>
+      // Apply the saved theme before first paint so there is no flash.
+      try {
+        var saved = JSON.parse(localStorage.getItem("lotto-theme") || "{}");
+        var mode = saved.mode || "dark";
+        var dark =
+          mode === "dark" ||
+          (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+        if (saved.preset) document.documentElement.dataset.theme = saved.preset;
+      } catch (e) {}
+    </script>
+    <title>Smart Pick</title>
   </head>
   <body>
     <div id="root"></div>

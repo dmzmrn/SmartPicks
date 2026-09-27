@@ -5,6 +5,7 @@ export const storageKeys = (pick, max) => {
   return {
     excluded: `lotto-excluded-combos:${k}`,
     settings: `lotto-exclusion-settings:${k}`,
+    history: `lotto-generation-history:${k}`,
   };
 };
 
@@ -62,4 +63,25 @@ export const saveSettings = (pick, max, settings) => {
 export const clampRecentN = (n) => {
   const v = Math.floor(Number(n) || 50);
   return Math.max(10, Math.min(500, v));
+};
+
+export const HISTORY_LIMIT = 1000;
+
+export const loadHistory = (pick, max) => {
+  const data = safeRead(storageKeys(pick, max).history);
+  if (!Array.isArray(data)) return [];
+  return data.filter(
+    (entry) =>
+      entry &&
+      typeof entry === "object" &&
+      Number.isFinite(entry.ts) &&
+      Array.isArray(entry.picks) &&
+      entry.picks.length === pick &&
+      entry.picks.every((n) => Number.isInteger(n) && n >= 1 && n <= max) &&
+      Array.isArray(entry.relaxed)
+  );
+};
+
+export const saveHistory = (pick, max, list) => {
+  safeWrite(storageKeys(pick, max).history, list.slice(-HISTORY_LIMIT));
 };

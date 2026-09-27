@@ -18,15 +18,19 @@ import PatternAnalysisChart from "./PatternAnalysisChart";
 import ClusterHeatmap from "./ClusterHeatmap";
 import DrawDistributionList from "./DrawDistributionList";
 
-export default function ReportsModule({ pick = 6, max = 58, gameLabel = "Lotto" }) {
-  const [draws, setDraws] = useState([]);
-  const [fileName, setFileName] = useState("");
+export default function ReportsModule({
+  pick = 6,
+  max = 58,
+  gameLabel = "Lotto",
+  draws = [],
+  winners = [],
+  fileName = "",
+  onDrawsChange,
+}) {
   const [errorMessage, setErrorMessage] = useState("");
   const [generated, setGenerated] = useState(false);
 
   useEffect(() => {
-    setDraws([]);
-    setFileName("");
     setErrorMessage("");
     setGenerated(false);
   }, [pick, max]);
@@ -34,21 +38,26 @@ export default function ReportsModule({ pick = 6, max = 58, gameLabel = "Lotto" 
   const handleFile = async (file) => {
     try {
       const text = await file.text();
-      const { draws: parsed, skipped } = parseDrawsFromText(text, pick, max);
+      const { draws: parsed, winners, skipped, hasWinnerData } = parseDrawsFromText(
+        text,
+        pick,
+        max
+      );
       if (parsed.length === 0) {
-        setDraws([]);
-        setFileName("");
+        onDrawsChange([], "", []);
         setErrorMessage(
           `No valid ${pick}-number draws between 1 and ${max} found in this file.`
         );
         setGenerated(false);
         return;
       }
-      setDraws(parsed);
-      setFileName(file.name);
+      onDrawsChange(parsed, file.name, winners);
       setErrorMessage("");
       setGenerated(false);
-      toast.success(`${file.name}: ${parsed.length} draws loaded${skipped ? `, ${skipped} skipped` : ""}.`);
+      const winnersNote = hasWinnerData ? ", winner counts detected" : "";
+      toast.success(
+        `${file.name}: ${parsed.length} draws loaded${skipped ? `, ${skipped} skipped` : ""}${winnersNote}.`
+      );
     } catch (err) {
       console.error(err);
       setErrorMessage("Could not read this file.");
@@ -59,15 +68,13 @@ export default function ReportsModule({ pick = 6, max = 58, gameLabel = "Lotto" 
     const data = pick === 6 && max === 58
       ? sampleDraws6_58
       : generateMockDraws(pick, max, 30);
-    setDraws(data);
-    setFileName(`demo-${pick}-${max}.txt`);
+    onDrawsChange(data, `demo-${pick}-${max}.txt`, []);
     setErrorMessage("");
     setGenerated(false);
   };
 
   const handleClear = () => {
-    setDraws([]);
-    setFileName("");
+    onDrawsChange([], "", []);
     setErrorMessage("");
     setGenerated(false);
   };
@@ -87,15 +94,13 @@ export default function ReportsModule({ pick = 6, max = 58, gameLabel = "Lotto" 
   );
 
   return (
-    <div className="space-y-4">
-      <div className="text-xs uppercase tracking-wider accent-text-soft opacity-80">
-        {gameLabel} · {pick}/{max}
-      </div>
-
+    <div className="space-y-6">
       <FileUploadCard
+        gameLabel={gameLabel}
         fileName={fileName}
         drawsCount={draws.length}
         hasDraws={draws.length > 0}
+        winnersDetected={winners.some((w) => w !== null)}
         errorMessage={errorMessage}
         onFile={handleFile}
         onLoadDemo={handleLoadDemo}
@@ -104,18 +109,19 @@ export default function ReportsModule({ pick = 6, max = 58, gameLabel = "Lotto" 
       />
 
       {!generated && (
-        <div className="rounded-lg border border-dashed border-white/[0.08] bg-white/[0.01] p-8 text-center text-sm text-muted-foreground">
-          Upload a file or load demo data, then click <span className="accent-text-soft">Generate Report</span>.
+        <div className="rounded-lg border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+          Upload a file or load demo data, then press{" "}
+          <span className="font-medium text-foreground">Generate report</span>.
         </div>
       )}
 
       {generated && draws.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <SummaryStats aggregate={aggregate} />
 
           <SumDistributionChart drawStats={drawStats} meanSum={aggregate.meanSum} />
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <FrequencyDistributionChart
                 frequencyData={frequencyData}

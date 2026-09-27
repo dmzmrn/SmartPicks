@@ -8,8 +8,8 @@ const COLUMNS = [
   { key: "index", label: "#" },
   { key: "numbers", label: "Numbers" },
   { key: "sum", label: "Sum" },
-  { key: "oe", label: "O/E" },
-  { key: "lh", label: "L/H" },
+  { key: "oe", label: "Odd/Even" },
+  { key: "lh", label: "Low/High" },
 ];
 
 const SortIcon = ({ active, dir }) => {
@@ -48,45 +48,45 @@ export default function DrawDistributionList({ drawStats }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Past draws</CardTitle>
-        <CardDescription>Sortable — click a column to cycle asc/desc.</CardDescription>
+        <CardTitle>Past draws</CardTitle>
+        <CardDescription>Sort by any column; press again to reverse.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-2 flex flex-wrap gap-1">
+        <div className="mb-3 flex flex-wrap gap-1">
           {COLUMNS.map((c) => (
             <Button
               key={c.key}
               variant={sort.key === c.key ? "secondary" : "ghost"}
               size="sm"
               onClick={() => cycle(c.key)}
-              className="h-7 gap-1.5 px-2 text-[11px]"
+              className="h-8 gap-1.5 px-2.5 text-xs"
             >
               <SortIcon active={sort.key === c.key} dir={sort.dir} />
               {c.label}
             </Button>
           ))}
         </div>
-        <ScrollArea className="h-[360px] rounded-md border border-white/[0.06]">
-          <table className="w-full text-sm font-mono">
-            <thead className="sticky top-0 bg-background/95 backdrop-blur">
-              <tr className="border-b border-white/[0.06] text-xs text-muted-foreground">
-                <th className="px-3 py-2 text-left">#</th>
-                <th className="px-3 py-2 text-left">Numbers</th>
-                <th className="px-3 py-2 text-right">Sum</th>
-                <th className="px-3 py-2 text-right">O/E</th>
-                <th className="px-3 py-2 text-right">L/H</th>
+        <ScrollArea className="h-[360px] rounded-md border">
+          <table className="w-full text-sm tabular-nums">
+            <thead className="sticky top-0 bg-card">
+              <tr className="border-b text-xs text-muted-foreground">
+                <th className="px-3 py-2 text-left font-medium">#</th>
+                <th className="px-3 py-2 text-left font-medium">Numbers</th>
+                <th className="px-3 py-2 text-right font-medium">Sum</th>
+                <th className="px-3 py-2 text-right font-medium">Odd/Even</th>
+                <th className="px-3 py-2 text-right font-medium">Low/High</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((d) => (
-                <tr key={d.index} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                  <td className="px-3 py-1.5 text-slate-400">{String(d.index).padStart(3, "0")}</td>
-                  <td className="px-3 py-1.5 text-slate-200">
+                <tr key={d.index} className="border-b last:border-0 hover:bg-muted/50">
+                  <td className="px-3 py-1.5 text-muted-foreground">{String(d.index).padStart(3, "0")}</td>
+                  <td className="px-3 py-1.5 font-medium">
                     {d.numbers.map((n) => String(n).padStart(2, "0")).join("  ")}
                   </td>
-                  <td className="px-3 py-1.5 text-right accent-text-soft">{d.sum}</td>
-                  <td className="px-3 py-1.5 text-right text-slate-400">{d.odd}/{d.even}</td>
-                  <td className="px-3 py-1.5 text-right text-slate-400">{d.low}/{d.high}</td>
+                  <td className="px-3 py-1.5 text-right">{d.sum}</td>
+                  <td className="px-3 py-1.5 text-right text-muted-foreground">{d.odd}/{d.even}</td>
+                  <td className="px-3 py-1.5 text-right text-muted-foreground">{d.low}/{d.high}</td>
                 </tr>
               ))}
             </tbody>
