@@ -1,6 +1,43 @@
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
-*.local
+*.tsbuildinfo
+
+# Caches
 .vite
+.cache
+.eslintcache
+coverage
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets (keep an example file if one is ever added)
+.env
+.env.*
+!.env.example
+*.local
+
+# Personal draw data and exports — never committed
+*.txt
+*.csv
+datasource/
+
+# Editor / tooling (personal, machine-specific)
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+.claude/settings.local.json
+
+# OS files
 .DS_Store
+Thumbs.db
+desktop.ini
