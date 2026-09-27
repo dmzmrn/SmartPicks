@@ -10,13 +10,16 @@ import {
   Cell,
   ResponsiveContainer,
 } from "recharts";
+import {
+  SLOT,
+  CHART_INK,
+  CHART_MARGIN,
+  cursorStyle,
+  tooltipStyle,
+  tooltipItemStyle,
+} from "@/lib/chartTheme";
 
-const tooltipStyle = {
-  background: "#020617",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 6,
-  fontSize: 12,
-};
+const MUTED_BAR_OPACITY = 0.35;
 
 export default function FrequencyDistributionChart({ frequencyData, hotMin, coldMin }) {
   const data = useMemo(
@@ -24,40 +27,44 @@ export default function FrequencyDistributionChart({ frequencyData, hotMin, cold
     [frequencyData]
   );
 
-  const cellColor = (count) => {
-    if (count >= hotMin) return "#4ade80";
-    if (count <= coldMin) return "#f87171";
-    return "#6366f1";
-  };
+  const isExtreme = (count) => count >= hotMin || count <= coldMin;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Number frequency</CardTitle>
-        <CardDescription>Hottest in green, coldest in red.</CardDescription>
+        <CardTitle>Number frequency</CardTitle>
+        <CardDescription>
+          Times each number was drawn. The most- and least-drawn numbers are highlighted —
+          differences like these are normal luck, not a trend.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+            <BarChart data={data} margin={CHART_MARGIN}>
+              <CartesianGrid stroke={CHART_INK.grid} vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "#64748b", fontSize: 10, fontFamily: "monospace" }}
+                tick={CHART_INK.tick}
                 interval={Math.max(0, Math.floor(data.length / 30))}
-                axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
+                axisLine={CHART_INK.axisLine}
                 tickLine={false}
               />
-              <YAxis
-                tick={{ fill: "#64748b", fontSize: 10, fontFamily: "monospace" }}
-                axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                tickLine={false}
-                allowDecimals={false}
+              <YAxis tick={CHART_INK.tick} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                itemStyle={tooltipItemStyle}
+                cursor={cursorStyle}
+                labelFormatter={(v) => `Number ${v}`}
+                formatter={(value) => [value, "times drawn"]}
               />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-              <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+              <Bar dataKey="count" radius={[2, 2, 0, 0]}>
                 {data.map((d) => (
-                  <Cell key={d.number} fill={cellColor(d.count)} />
+                  <Cell
+                    key={d.number}
+                    fill={SLOT.first}
+                    fillOpacity={isExtreme(d.count) ? 1 : MUTED_BAR_OPACITY}
+                  />
                 ))}
               </Bar>
             </BarChart>

@@ -9,13 +9,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-
-const tooltipStyle = {
-  background: "#020617",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 6,
-  fontSize: 12,
-};
+import { SLOT, CHART_INK, CHART_MARGIN, tooltipStyle, tooltipItemStyle } from "@/lib/chartTheme";
 
 export default function SumDistributionChart({ drawStats, meanSum }) {
   const data = drawStats.map((d) => ({ index: d.index, sum: d.sum }));
@@ -23,39 +17,35 @@ export default function SumDistributionChart({ drawStats, meanSum }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Sum per draw</CardTitle>
-        <CardDescription>How total sums move across draws — mean reference line.</CardDescription>
+        <CardTitle>Sum per draw</CardTitle>
+        <CardDescription>How each draw's total moves over time, against the average.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="sumGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="index"
-                tick={{ fill: "#64748b", fontSize: 10, fontFamily: "monospace" }}
-                axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                tickLine={false}
+            <AreaChart data={data} margin={{ ...CHART_MARGIN, top: 20 }}>
+              <CartesianGrid stroke={CHART_INK.grid} vertical={false} />
+              <XAxis dataKey="index" tick={CHART_INK.tick} axisLine={CHART_INK.axisLine} tickLine={false} />
+              <YAxis tick={CHART_INK.tick} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                itemStyle={tooltipItemStyle}
+                labelFormatter={(v) => `Draw ${v}`}
+                formatter={(value) => [value, "sum"]}
               />
-              <YAxis
-                tick={{ fill: "#64748b", fontSize: 10, fontFamily: "monospace" }}
-                axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                tickLine={false}
+              <ReferenceLine
+                y={meanSum}
+                stroke={CHART_INK.reference}
+                strokeDasharray="4 4"
+                label={{ value: `average ${meanSum.toFixed(0)}`, fill: CHART_INK.reference, fontSize: 11, position: "insideTopRight" }}
               />
-              <Tooltip contentStyle={tooltipStyle} />
-              <ReferenceLine y={meanSum} stroke="#a78bfa" strokeDasharray="4 4" label={{ value: `μ ${meanSum.toFixed(0)}`, fill: "#a78bfa", fontSize: 10 }} />
               <Area
                 type="monotone"
                 dataKey="sum"
-                stroke="#818cf8"
-                fill="url(#sumGrad)"
+                stroke={SLOT.first}
                 strokeWidth={2}
+                fill={SLOT.first}
+                fillOpacity={0.12}
               />
             </AreaChart>
           </ResponsiveContainer>

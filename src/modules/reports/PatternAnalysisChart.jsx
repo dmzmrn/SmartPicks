@@ -11,12 +11,28 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import {
+  SLOT,
+  CHART_INK,
+  CHART_MARGIN,
+  cursorStyle,
+  tooltipStyle,
+  tooltipItemStyle,
+  legendStyle,
+  legendFormatter,
+} from "@/lib/chartTheme";
 
-const tooltipStyle = {
-  background: "#020617",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 6,
-  fontSize: 12,
+// Two parts of one composition: validated palette slots 1 and 2, with a 2px
+// surface gap between stacked segments.
+const SPLITS = {
+  oe: [
+    { key: "odd", name: "Odd", fill: SLOT.first },
+    { key: "even", name: "Even", fill: SLOT.second },
+  ],
+  lh: [
+    { key: "low", name: "Low", fill: SLOT.first },
+    { key: "high", name: "High", fill: SLOT.second },
+  ],
 };
 
 export default function PatternAnalysisChart({ drawStats }) {
@@ -35,10 +51,10 @@ export default function PatternAnalysisChart({ drawStats }) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between">
-        <div>
-          <CardTitle className="text-base">Pattern trends</CardTitle>
-          <CardDescription>Stacked composition per draw.</CardDescription>
+      <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1.5">
+          <CardTitle>Pattern trends</CardTitle>
+          <CardDescription>How each draw splits.</CardDescription>
         </div>
         <ToggleGroup
           type="single"
@@ -46,41 +62,37 @@ export default function PatternAnalysisChart({ drawStats }) {
           onValueChange={(v) => v && setMode(v)}
           size="sm"
           variant="outline"
+          aria-label="Split"
         >
-          <ToggleGroupItem value="oe">Odd / Even</ToggleGroupItem>
-          <ToggleGroupItem value="lh">Low / High</ToggleGroupItem>
+          <ToggleGroupItem value="oe">Odd/Even</ToggleGroupItem>
+          <ToggleGroupItem value="lh">Low/High</ToggleGroupItem>
         </ToggleGroup>
       </CardHeader>
       <CardContent>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="index"
-                tick={{ fill: "#64748b", fontSize: 10, fontFamily: "monospace" }}
-                axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                tickLine={false}
+            <BarChart data={data} margin={CHART_MARGIN}>
+              <CartesianGrid stroke={CHART_INK.grid} vertical={false} />
+              <XAxis dataKey="index" tick={CHART_INK.tick} axisLine={CHART_INK.axisLine} tickLine={false} />
+              <YAxis tick={CHART_INK.tick} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                itemStyle={tooltipItemStyle}
+                cursor={cursorStyle}
+                labelFormatter={(v) => `Draw ${v}`}
               />
-              <YAxis
-                tick={{ fill: "#64748b", fontSize: 10, fontFamily: "monospace" }}
-                axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {mode === "oe" ? (
-                <>
-                  <Bar dataKey="odd" stackId="a" fill="#a78bfa" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="even" stackId="a" fill="#facc15" radius={[3, 3, 0, 0]} />
-                </>
-              ) : (
-                <>
-                  <Bar dataKey="low" stackId="a" fill="#60a5fa" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="high" stackId="a" fill="#34d399" radius={[3, 3, 0, 0]} />
-                </>
-              )}
+              <Legend wrapperStyle={legendStyle} formatter={legendFormatter} />
+              {SPLITS[mode].map((s) => (
+                <Bar
+                  key={s.key}
+                  dataKey={s.key}
+                  name={s.name}
+                  stackId="split"
+                  fill={s.fill}
+                  stroke="hsl(var(--card))"
+                  strokeWidth={2}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>

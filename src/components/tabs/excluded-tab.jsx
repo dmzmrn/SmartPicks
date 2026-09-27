@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Upload, Download, X, Trash2 } from "lucide-react";
 import Ball from "@/components/ball";
 import { parseCombosFromText } from "@/lib/parsing";
 import { clampRecentN } from "@/lib/storage";
-import { cn } from "@/lib/utils";
 
 const MODES = ["off", "all-time", "recent"];
 const MODE_LABEL = { off: "Off", "all-time": "All-time", recent: "Recent only" };
@@ -106,35 +106,37 @@ export default function ExcludedTab({
 
   const status =
     mode === "off"
-      ? `${excluded.length} stored (none active)`
-      : `Excluding ${effectiveCount} of ${excluded.length} stored combinations`;
+      ? `${excluded.length.toLocaleString()} stored · none active`
+      : `Excluding ${effectiveCount.toLocaleString()} of ${excluded.length.toLocaleString()} stored combinations`;
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Exclusion mode</CardTitle>
-          <CardDescription>Decide which stored combos block new picks.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {MODES.map((m) => (
-              <Button
-                key={m}
-                size="sm"
-                variant={mode === m ? "default" : "secondary"}
-                onClick={() => setMode(m)}
-                className={cn(mode === m && "accent-grad text-white")}
-              >
-                {MODE_LABEL[m]}
-              </Button>
-            ))}
-          </div>
-          {mode === "recent" && (
-            <div className="flex items-end gap-2">
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Last N draws</Label>
+    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Exclusion mode</CardTitle>
+            <CardDescription>Decide which stored combinations block new picks.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              value={mode}
+              onValueChange={(v) => v && setMode(v)}
+              className="grid grid-cols-3"
+              aria-label="Exclusion mode"
+            >
+              {MODES.map((m) => (
+                <ToggleGroupItem key={m} value={m}>
+                  {MODE_LABEL[m]}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            {mode === "recent" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="recentN">Most recent combinations (10–500)</Label>
                 <Input
+                  id="recentN"
                   type="number"
                   min={10}
                   max={500}
@@ -143,20 +145,17 @@ export default function ExcludedTab({
                   onChange={(e) => setRecentN(clampRecentN(e.target.value))}
                 />
               </div>
-              <span className="pb-2 text-[11px] text-muted-foreground">(10–500)</span>
-            </div>
-          )}
-          <div className="text-xs text-muted-foreground">{status}</div>
-        </CardContent>
-      </Card>
+            )}
+            <p className="text-sm text-muted-foreground">{status}</p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Import / Export</CardTitle>
-          <CardDescription>Round-trips with `.txt` / `.csv` files.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Import or export</CardTitle>
+            <CardDescription>Plain .txt or .csv, one combination per line.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
             <input
               ref={inputRef}
               type="file"
@@ -169,7 +168,7 @@ export default function ExcludedTab({
               }}
             />
             <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
-              <Upload className="mr-2 h-4 w-4" /> Import from file
+              <Upload className="mr-2 h-4 w-4" /> Import file
             </Button>
             <Button
               variant="outline"
@@ -177,74 +176,80 @@ export default function ExcludedTab({
               onClick={handleExport}
               disabled={excluded.length === 0}
             >
-              <Download className="mr-2 h-4 w-4" /> Export to file
+              <Download className="mr-2 h-4 w-4" /> Export file
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Paste combinations</CardTitle>
+            <CardDescription>Spaces, commas or dashes all work.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              rows={4}
+              className="font-mono"
+              aria-label="Combinations to exclude"
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+              placeholder={"e.g.\n14 08 22 50 58 19\n02, 18, 47, 12, 32, 11\n31-16-45-10-47-32"}
+            />
+            <Button size="sm" onClick={handlePaste} disabled={!paste.trim()}>
+              Add to excluded list
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Manual paste</CardTitle>
-          <CardDescription>One combination per line.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Textarea
-            rows={4}
-            value={paste}
-            onChange={(e) => setPaste(e.target.value)}
-            placeholder={"e.g.\n14 08 22 50 58 19\n02, 18, 47, 12, 32, 11\n31-16-45-10-47-32"}
-          />
-          <Button size="sm" onClick={handlePaste} disabled={!paste.trim()}>
-            Add to excluded list
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base">Stored combinations</CardTitle>
-            <CardDescription>{excluded.length} stored — {pick}/{max}</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle>Stored combinations</CardTitle>
+            <CardDescription>
+              {excluded.length.toLocaleString()} stored for {pick}/{max}
+            </CardDescription>
           </div>
           <Button
-            variant="destructive"
+            variant="outline"
             size="sm"
             disabled={excluded.length === 0}
             onClick={clearAll}
+            className="gap-1.5 text-destructive hover:text-destructive"
           >
-            <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear all
+            <Trash2 className="h-3.5 w-3.5" /> Clear all
           </Button>
         </CardHeader>
         <CardContent>
           {excluded.length === 0 ? (
-            <div className="rounded-md border border-dashed border-white/[0.08] p-6 text-center text-xs text-muted-foreground">
-              No combinations stored yet.
+            <div className="rounded-md border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+              Nothing stored yet. Exclude a generated set, import a file, or paste combinations.
             </div>
           ) : (
-            <ScrollArea className="max-h-[320px]">
-              <div className="space-y-1.5">
+            <ScrollArea className="rounded-md border [&>[data-radix-scroll-area-viewport]]:max-h-[420px]">
+              <ul className="divide-y">
                 {excluded.map((combo, idx) => (
-                  <div
+                  <li
                     key={`${combo.join("-")}-${idx}`}
-                    className="flex items-center justify-between gap-3 rounded-md border border-white/[0.05] bg-white/[0.015] p-2"
+                    className="flex items-center justify-between gap-3 px-3 py-2"
                   >
                     <div className="flex flex-wrap gap-1">
-                      {combo.map((n, i) => (
-                        <Ball key={i} n={n} max={max} size="sm" />
+                      {combo.map((n) => (
+                        <Ball key={n} n={n} size="sm" />
                       ))}
                     </div>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      aria-label={`Remove ${combo.join(" ")}`}
                       onClick={() => removeAt(idx)}
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-4 w-4" />
                     </Button>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </ScrollArea>
           )}
         </CardContent>
